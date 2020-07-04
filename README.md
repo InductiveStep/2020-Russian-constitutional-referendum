@@ -104,7 +104,7 @@ res_clean <- res_clean %>%
 ``` r
 res_clean %>%
   arrange(Perc_Yes) %>%
-  kable(digits = 1)
+  kable(align="lrrr", digits = 1)
 ```
 
 <table>

@@ -1,0 +1,109 @@
+---
+title: "2020 Russian constitutional referendum"
+author: "Andi (almost@gmail.com, @[inductivestep](https://twitter.com/InductiveStep))"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+output: github_document
+always_allow_html: true
+---
+
+Using `rvest` to parse the 2020 Russian constitutional referendum results from Wikipedia and do some sums. (To be continued...)
+
+### Load packages
+
+```{r message=FALSE}
+library(rvest)
+library(tidyverse)
+library(kableExtra)
+```
+
+### Read in the data
+
+```{r}
+wp_page <- read_html("https://en.wikipedia.org/wiki/2020_Russian_constitutional_referendum")
+```
+
+### Grab the table
+
+```{r}
+results <- wp_page %>%
+  html_node(xpath = '//*[@id="mw-content-text"]/div/table[7]') %>%
+  html_table(fill = TRUE)
+names(results) <- c("Region", "Votes_Yes", "Perc_Yes", "Votes_No", "Perc_No")
+```
+
+```{r eval = F}
+View(results)
+```
+
+### Cleaning
+
+Remove an empty row and other stuff...
+
+```{r}
+res_clean <- results %>%
+  subset(!Region %in% c("",
+                        "Source: CEC",
+                        "Region"))
+```
+
+Remove the thousand separator commas.
+
+```{r}
+res_clean %>%
+  mutate_at(vars(starts_with("Votes")),
+            ~ gsub(",", "", .)) -> res_clean
+```
+
+Now transform all the numbers to numerics.
+
+```{r}
+res_clean %>%
+  mutate_at(vars(!matches("Region")),
+            as.numeric) -> res_clean
+```
+
+Remove those percentages:
+
+```{r}
+res_clean %>%
+  select(-c(starts_with("Perc"))) -> res_clean
+```
+
+Have a peek:
+
+```{r eval = F}
+View(res_clean)
+```
+
+### 'rithmetic
+
+Total sums:
+
+```{r}
+Total_Yes <- sum(res_clean$Votes_Yes)
+Total_No  <- sum(res_clean$Votes_No)
+```
+
+Proportion voting for the changes.
+
+```{r}
+Perc_Yes <- 100*Total_Yes / (Total_Yes + Total_No)
+Perc_Yes
+```
+
+Compute the percentages again (more dp)
+
+```{r}
+res_clean <- res_clean %>%
+  mutate(Perc_Yes = 100*Votes_Yes / (Votes_Yes + Votes_No))
+```
+
+### Results
+
+```{r}
+res_clean %>%
+  arrange(Perc_Yes) %>%
+  kable(digits = 1)
+```
+### To be continued...
+

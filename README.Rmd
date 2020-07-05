@@ -20,7 +20,7 @@ library(kableExtra)
 ### Read in the data
 
 ```{r}
-wp_page <- read_html("https://en.wikipedia.org/wiki/2020_Russian_constitutional_referendum")
+wp_page <- read_html("https://en.wikipedia.org/w/index.php?title=2020_Russian_constitutional_referendum&oldid=966242800")
 ```
 
 ### Grab the table
@@ -247,8 +247,13 @@ ru_df_vals$region <- ru_df_vals$id # to prevent a message later...
 ggplot(ru_df_vals, aes(long, lat)) +
   geom_map(map=ru_df_vals,
            aes(map_id=id, fill=Perc_Yes),
-           show.legend = T)
+           show.legend = T) +
+  coord_equal() +
+  xlim(0,NA) + 
+  theme_void() +
+  labs(fill = "% voting yes") +
+  scale_fill_gradient(low = "blue", high = "red")
 ```
 
-It's distorted, the colour scale is unhelpful, and it doesn't know that the planet is a sphere. But it's a start.
+It feels distorted, needs better colours, and doesn't know that the planet is a sphere (there's a chunk of eastern Russia lopped off). But it's a start.
 

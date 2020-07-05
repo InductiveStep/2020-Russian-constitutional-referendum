@@ -26,7 +26,7 @@ wp_page <- read_html("https://en.wikipedia.org/wiki/2020_Russian_constitutional_
 
 ``` r
 results <- wp_page %>%
-  html_node(xpath = '//*[@id="mw-content-text"]/div/table[7]') %>%
+  html_node(xpath = '//*[@id="mw-content-text"]/div/table[10]') %>%
   html_table(fill = TRUE)
 names(results) <- c("Region", "Votes_Yes", "Perc_Yes", "Votes_No", "Perc_No")
 ```
@@ -66,7 +66,7 @@ Remove those percentages:
 
 ``` r
 res_clean %>%
-  select(-c(starts_with("Perc"))) -> res_clean
+  dplyr::select(-c(starts_with("Perc"))) -> res_clean
 ```
 
 Have a peek:
@@ -2597,3 +2597,196 @@ qq_res <- qqPlot(res_clean$Perc_Yes, id = list(labels = res_clean$Region),
 ```
 
 ![](README_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
+
+## Plot on a map - work in progress\!
+
+The CRAN version of `raster` didn’t work this end (error loading a DLL),
+so grab from github…
+
+``` r
+#library(devtools)
+#install_github("rspatial/raster")
+```
+
+… and load:
+
+``` r
+library(raster)
+```
+
+Get the country map:
+
+``` r
+ru <- getData("GADM", country = "RUS", level=1)
+```
+
+### Matching the region names
+
+Here are the region names in this map (first 10):
+
+``` r
+ru@data$NAME_1[1:10]
+```
+
+    ##  [1] "Adygey"        "Altay"         "Amur"          "Arkhangel'sk" 
+    ##  [5] "Astrakhan'"    "Bashkortostan" "Belgorod"      "Bryansk"      
+    ##  [9] "Buryat"        "Chechnya"
+
+They’re different to the names in the Wikipedia table. How do we match
+them…?
+
+Fuzzy matching by edit distance…? This kinda works for most of them but
+not quite…
+
+``` r
+distances <- adist(gsub("Oblast|Krai|Okrug|Autonomous",
+                        "",
+                        res_clean$Region),
+                   ru@data$NAME_1)
+rownames(distances) <- res_clean$Region
+colnames(distances) <- ru@data$NAME_1
+```
+
+Often the match is good or close. Other times not so close, e.g.,
+“Sakha” and “Yakutia” are [different names for the same
+place](https://en.wikipedia.org/wiki/Sakha) but aren’t the closet match.
+So, time to export:
+
+``` r
+write.csv(as.data.frame(distances), "distances.csv", row.names = T)
+```
+
+I fiddled with this file outside R (using… Excel) and replaced the best
+match with -1. Reading in again:
+
+``` r
+region_match <- read_csv("fixed_distances.csv")
+```
+
+    ## Parsed with column specification:
+    ## cols(
+    ##   .default = col_double(),
+    ##   Region = col_character()
+    ## )
+
+    ## See spec(...) for full column specifications.
+
+Okay, make a lookup table using a DIRTY for loop:
+
+``` r
+wiki_region <- region_match$Region
+GADM_region <- rep(NA, length(wiki_region))
+
+for (r in 1:nrow(region_match)) {
+  row            <- region_match[r,-1]
+  matching_index <- which(row == -1)
+  GADM_region[r] <- ifelse(length(matching_index) == 1,
+                           colnames(row[which(row == -1)]),
+                           NA)
+}
+
+matched_region_names <- data.frame(wiki_region, GADM_region)
+rm(wiki_region, GADM_region, row, matching_index)
+```
+
+Take a look:
+
+``` r
+View(matched_region_names)
+```
+
+No matches for Baikonur (the cosmodrome), Crimea or Sevastopol (which
+are Ukraine), or “Russians abroad” (that ain’t an oblast).
+
+### Glue together
+
+``` r
+for_merge <- matched_region_names
+names(for_merge)[1] <- "Region"
+for_map <- left_join(res_clean, for_merge)
+```
+
+    ## Joining, by = "Region"
+
+Now select the bits we want:
+
+``` r
+for_map <- for_map %>%
+  dplyr::select(GADM_region, Perc_Yes)
+names(for_map)[1] = "id"
+```
+
+### Plot a map
+
+This was more complicated than surely it needs to be…
+
+``` r
+library(broom)
+library(gpclib)
+```
+
+    ## General Polygon Clipper Library for R (version 1.5-6)
+    ##  Type 'class ? gpc.poly' for help
+
+``` r
+library(maptools)
+```
+
+    ## Checking rgeos availability: FALSE
+    ##      Note: when rgeos is not available, polygon geometry     computations in maptools depend on gpclib,
+    ##      which has a restricted licence. It is disabled by default;
+    ##      to enable gpclib, type gpclibPermit()
+
+``` r
+gpclibPermit()
+```
+
+    ## Warning in gpclibPermit(): support for gpclib will be withdrawn from maptools at
+    ## the next major release
+
+    ## [1] TRUE
+
+``` r
+ru_df <- tidy(ru, region = "NAME_1")
+```
+
+This doesn’t look good: “support for gpclib will be withdrawn from
+maptools at the next major release”
+
+``` r
+head(ru_df)
+```
+
+    ## # A tibble: 6 x 7
+    ##    long   lat order hole  piece group    id    
+    ##   <dbl> <dbl> <int> <lgl> <fct> <fct>    <chr> 
+    ## 1  39.7  44.0     1 FALSE 1     Adygey.1 Adygey
+    ## 2  39.7  44.0     2 FALSE 1     Adygey.1 Adygey
+    ## 3  39.7  44.0     3 FALSE 1     Adygey.1 Adygey
+    ## 4  39.7  44.0     4 FALSE 1     Adygey.1 Adygey
+    ## 5  39.7  44.1     5 FALSE 1     Adygey.1 Adygey
+    ## 6  39.7  44.1     6 FALSE 1     Adygey.1 Adygey
+
+``` r
+ru_df_vals <- left_join(ru_df, for_map)
+```
+
+    ## Joining, by = "id"
+
+``` r
+ru_df_vals$region <- ru_df_vals$id # to prevent a message later...
+```
+
+### Now really plot the thing
+
+``` r
+ggplot(ru_df_vals, aes(long, lat)) +
+  geom_map(map=ru_df_vals,
+           aes(map_id=id, fill=Perc_Yes),
+           show.legend = T)
+```
+
+![](README_files/figure-gfm/unnamed-chunk-30-1.png)<!-- -->
+
+It’s distorted, the colour scale is unhelpful, and it doesn’t know that
+the planet is a sphere. But it’s a start.

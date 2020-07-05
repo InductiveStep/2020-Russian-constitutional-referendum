@@ -2,7 +2,7 @@
 ================
 Andi (<almost@gmail.com>,
 @[inductivestep](https://twitter.com/InductiveStep))
-04 July 2020
+05 July 2020
 
 Using `rvest` to parse the 2020 Russian constitutional referendum
 results from Wikipedia and do some sums. (To be continued…)
@@ -11,6 +11,7 @@ results from Wikipedia and do some sums. (To be continued…)
 
 ``` r
 library(rvest)
+library(car)
 library(tidyverse)
 library(kableExtra)
 ```
@@ -83,7 +84,7 @@ Total_Yes <- sum(res_clean$Votes_Yes)
 Total_No  <- sum(res_clean$Votes_No)
 ```
 
-Proportion voting for the changes.
+Percentage voting for the changes.
 
 ``` r
 Perc_Yes <- 100*Total_Yes / (Total_Yes + Total_No)
@@ -2583,4 +2584,16 @@ Chechnya
 
 </table>
 
-### To be continued…
+``` r
+hist(res_clean$Perc_Yes, main = "", xlab = "Percentage voting Yes")
+```
+
+![](README_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
+
+``` r
+qq_res <- qqPlot(res_clean$Perc_Yes, id = list(labels = res_clean$Region),
+                 xlab = "Quantiles (normal distribution)",
+                 ylab = "Percentage voting Yes")
+```
+
+![](README_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->

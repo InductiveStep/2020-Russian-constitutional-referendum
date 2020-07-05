@@ -162,7 +162,7 @@ rownames(distances) <- res_clean$Region
 colnames(distances) <- ru@data$NAME_1
 ```
 
-Often the match is good or close. Other times not so close, e.g., "Sakha" and "Yakutia" are [different names for the same place](https://en.wikipedia.org/wiki/Sakha) but aren't the closet match. So, time to export:
+Often the match is good or close. Other times not so close, e.g., "Sakha" and "Yakutia" are [different names for the same place](https://en.wikipedia.org/wiki/Sakha) but aren't the closest match by edit distance. So, time to export:
 
 ```{r}
 write.csv(as.data.frame(distances), "distances.csv", row.names = T)

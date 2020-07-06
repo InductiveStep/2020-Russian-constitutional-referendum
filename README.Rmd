@@ -14,6 +14,7 @@ library(rvest)
 library(car)
 library(tidyverse)
 library(kableExtra)
+library(viridis)
 ```
 
 
@@ -225,6 +226,7 @@ This was more complicated than surely it needs to be...
 library(broom)
 library(gpclib)
 library(maptools)
+library(mapproj)
 gpclibPermit()
 ru_df <- tidy(ru, region = "NAME_1")
 ```
@@ -243,17 +245,20 @@ ru_df_vals$region <- ru_df_vals$id # to prevent a message later...
 
 ### Now really plot the thing
 
-```{r}
+```{r warning=FALSE}
 ggplot(ru_df_vals, aes(long, lat)) +
-  geom_map(map=ru_df_vals,
-           aes(map_id=id, fill=Perc_Yes),
+  geom_map(map = ru_df_vals,
+           aes(map_id = id, fill = Perc_Yes),
            show.legend = T) +
-  coord_equal() +
-  xlim(0,NA) + 
   theme_void() +
+  coord_map("azequalarea") + 
+  xlim(15,190) +
+  ylim(40,83) +
   labs(fill = "% voting yes") +
-  scale_fill_gradient(low = "blue", high = "red")
+  scale_fill_viridis(option = "magma", direction = -1)
 ```
 
-It feels distorted, needs better colours, and doesn't know that the planet is a sphere (there's a chunk of eastern Russia lopped off). But it's a start.
+
+The `xlim`, `ylim` and `coord_map` options were helped along by a [stack overflow post](https://stackoverflow.com/a/37567832/416656).
+
 

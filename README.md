@@ -14,6 +14,7 @@ library(rvest)
 library(car)
 library(tidyverse)
 library(kableExtra)
+library(viridis)
 ```
 
 ### Read in the data
@@ -2738,6 +2739,21 @@ library(maptools)
     ##      to enable gpclib, type gpclibPermit()
 
 ``` r
+library(mapproj)
+```
+
+    ## Warning: package 'mapproj' was built under R version 4.0.2
+
+    ## Loading required package: maps
+
+    ## 
+    ## Attaching package: 'maps'
+
+    ## The following object is masked from 'package:purrr':
+    ## 
+    ##     map
+
+``` r
 gpclibPermit()
 ```
 
@@ -2781,18 +2797,18 @@ ru_df_vals$region <- ru_df_vals$id # to prevent a message later...
 
 ``` r
 ggplot(ru_df_vals, aes(long, lat)) +
-  geom_map(map=ru_df_vals,
-           aes(map_id=id, fill=Perc_Yes),
+  geom_map(map = ru_df_vals,
+           aes(map_id = id, fill = Perc_Yes),
            show.legend = T) +
-  coord_equal() +
-  xlim(0,NA) + 
   theme_void() +
+  coord_map("azequalarea") + 
+  xlim(15,190) +
+  ylim(40,83) +
   labs(fill = "% voting yes") +
-  scale_fill_gradient(low = "blue", high = "red")
+  scale_fill_viridis(option = "magma", direction = -1)
 ```
 
 ![](README_files/figure-gfm/unnamed-chunk-30-1.png)<!-- -->
 
-It feels distorted, needs better colours, and doesn’t know that the
-planet is a sphere (there’s a chunk of eastern Russia lopped off). But
-it’s a start.
+The `xlim`, `ylim` and `coord_map` options were helped along by a [stack
+overflow post](https://stackoverflow.com/a/37567832/416656).

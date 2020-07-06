@@ -4,8 +4,9 @@ Andi (<almost@gmail.com>,
 @[inductivestep](https://twitter.com/InductiveStep))
 06 July 2020
 
-Using `rvest` to parse the 2020 Russian constitutional referendum
-results from Wikipedia and do some sums. (To be continued…)
+Using `rvest` to scrape the 2020 Russian constitutional referendum
+results from Wikipedia, do some sums, and plot them on a choropleth
+(`raster` and `ggplot`).
 
 ### Load packages
 
@@ -17,7 +18,7 @@ library(kableExtra)
 library(viridis)
 ```
 
-### Read in the data
+### Read in Wikipedia page
 
 ``` r
 wp_page <- read_html("https://en.wikipedia.org/w/index.php?title=2020_Russian_constitutional_referendum&oldid=966242800")
@@ -94,7 +95,7 @@ Perc_Yes
 
     ## [1] 78.55816
 
-Compute the percentages again (more dp)
+Compute the percentages again (more dp):
 
 ``` r
 res_clean <- res_clean %>%
@@ -2599,7 +2600,7 @@ qq_res <- qqPlot(res_clean$Perc_Yes, id = list(labels = res_clean$Region),
 
 ![](README_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
 
-## Plot on a map - work in progress\!
+## Plot on a map
 
 The CRAN version of `raster` didn’t work this end (error loading a DLL),
 so grab from github…
@@ -2615,7 +2616,7 @@ so grab from github…
 library(raster)
 ```
 
-Get the country map:
+Get the Russia country map:
 
 ``` r
 ru <- getData("GADM", country = "RUS", level=1)
@@ -2636,8 +2637,9 @@ ru@data$NAME_1[1:10]
 They’re different to the names in the Wikipedia table. How do we match
 them…?
 
-Fuzzy matching by edit distance…? This kinda works for most of them but
-not quite…
+Fuzzy matching by [edit
+distance](https://stat.ethz.ch/R-manual/R-devel/library/utils/html/adist.html)…?
+This almost works for most of them but not quite…
 
 ``` r
 distances <- adist(gsub("Oblast|Krai|Okrug|Autonomous",
@@ -2651,14 +2653,14 @@ colnames(distances) <- ru@data$NAME_1
 Often the match is good or close. Other times not so close, e.g.,
 “Sakha” and “Yakutia” are [different names for the same
 place](https://en.wikipedia.org/wiki/Sakha) but aren’t the closest match
-by edit distance. So, time to export:
+by edit distance. So, time to export and fix manually:
 
 ``` r
 write.csv(as.data.frame(distances), "distances.csv", row.names = T)
 ```
 
-I fiddled with this file outside R (using… Excel) and replaced the best
-match with -1. Reading in again:
+I fiddled with this file outside R (using… Excel, for shame) and
+replaced the best match with -1. Reading in again:
 
 ``` r
 region_match <- read_csv("fixed_distances.csv")
@@ -2672,7 +2674,7 @@ region_match <- read_csv("fixed_distances.csv")
 
     ## See spec(...) for full column specifications.
 
-Okay, make a lookup table using a DIRTY for loop:
+Okay, make a lookup table using a DIRTY for-loop:
 
 ``` r
 wiki_region <- region_match$Region
@@ -2709,7 +2711,7 @@ for_map <- left_join(res_clean, for_merge)
 
     ## Joining, by = "Region"
 
-Now select the bits we want:
+Now select the bits we want to plot on a map:
 
 ``` r
 for_map <- for_map %>%
@@ -2724,41 +2726,10 @@ This was more complicated than surely it needs to be…
 ``` r
 library(broom)
 library(gpclib)
-```
-
-    ## General Polygon Clipper Library for R (version 1.5-6)
-    ##  Type 'class ? gpc.poly' for help
-
-``` r
 library(maptools)
-```
-
-    ## Checking rgeos availability: FALSE
-    ##      Note: when rgeos is not available, polygon geometry     computations in maptools depend on gpclib,
-    ##      which has a restricted licence. It is disabled by default;
-    ##      to enable gpclib, type gpclibPermit()
-
-``` r
 library(mapproj)
-```
-
-    ## Warning: package 'mapproj' was built under R version 4.0.2
-
-    ## Loading required package: maps
-
-    ## 
-    ## Attaching package: 'maps'
-
-    ## The following object is masked from 'package:purrr':
-    ## 
-    ##     map
-
-``` r
 gpclibPermit()
 ```
-
-    ## Warning in gpclibPermit(): support for gpclib will be withdrawn from maptools at
-    ## the next major release
 
     ## [1] TRUE
 
@@ -2793,7 +2764,7 @@ ru_df_vals <- left_join(ru_df, for_map)
 ru_df_vals$region <- ru_df_vals$id # to prevent a message later...
 ```
 
-### Now really plot the thing
+### Now really (really) plot the data
 
 ``` r
 ggplot(ru_df_vals, aes(long, lat)) +

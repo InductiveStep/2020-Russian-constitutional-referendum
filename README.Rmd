@@ -5,7 +5,7 @@ date: "`r format(Sys.time(), '%d %B %Y')`"
 output: github_document
 ---
 
-Using `rvest` to parse the 2020 Russian constitutional referendum results from Wikipedia and do some sums. (To be continued...)
+Using `rvest` to scrape the 2020 Russian constitutional referendum results from Wikipedia, do some sums, and plot them on a choropleth (`raster` and `ggplot`).
 
 ### Load packages
 
@@ -18,7 +18,7 @@ library(viridis)
 ```
 
 
-### Read in the data
+### Read in Wikipedia page
 
 ```{r}
 wp_page <- read_html("https://en.wikipedia.org/w/index.php?title=2020_Russian_constitutional_referendum&oldid=966242800")
@@ -93,7 +93,7 @@ Perc_Yes <- 100*Total_Yes / (Total_Yes + Total_No)
 Perc_Yes
 ```
 
-Compute the percentages again (more dp)
+Compute the percentages again (more dp):
 
 ```{r}
 res_clean <- res_clean %>%
@@ -120,7 +120,7 @@ qq_res <- qqPlot(res_clean$Perc_Yes, id = list(labels = res_clean$Region),
 ```
 
 
-## Plot on a map - work in progress!
+## Plot on a map
 
 The CRAN version of `raster` didn't work this end (error loading a DLL), so grab from github...
 
@@ -135,7 +135,7 @@ The CRAN version of `raster` didn't work this end (error loading a DLL), so grab
 library(raster)
 ```
 
-Get the country map:
+Get the Russia country map:
 
 ```{r}
 ru <- getData("GADM", country = "RUS", level=1)
@@ -152,7 +152,7 @@ ru@data$NAME_1[1:10]
 
 They're different to the names in the Wikipedia table. How do we match them...?
 
-Fuzzy matching by edit distance...? This kinda works for most of them but not quite...
+Fuzzy matching by [edit distance](https://stat.ethz.ch/R-manual/R-devel/library/utils/html/adist.html)...? This almost works for most of them but not quite...
 
 ```{r}
 distances <- adist(gsub("Oblast|Krai|Okrug|Autonomous",
@@ -163,19 +163,19 @@ rownames(distances) <- res_clean$Region
 colnames(distances) <- ru@data$NAME_1
 ```
 
-Often the match is good or close. Other times not so close, e.g., "Sakha" and "Yakutia" are [different names for the same place](https://en.wikipedia.org/wiki/Sakha) but aren't the closest match by edit distance. So, time to export:
+Often the match is good or close. Other times not so close, e.g., "Sakha" and "Yakutia" are [different names for the same place](https://en.wikipedia.org/wiki/Sakha) but aren't the closest match by edit distance. So, time to export and fix manually:
 
 ```{r}
 write.csv(as.data.frame(distances), "distances.csv", row.names = T)
 ```
 
-I fiddled with this file outside R (using... Excel) and replaced the best match with -1. Reading in again:
+I fiddled with this file outside R (using... Excel, for shame) and replaced the best match with -1. Reading in again:
 
 ```{r}
 region_match <- read_csv("fixed_distances.csv")
 ```
 
-Okay, make a lookup table using a DIRTY for loop:
+Okay, make a lookup table using a DIRTY for-loop:
 
 ```{r}
 wiki_region <- region_match$Region
@@ -209,7 +209,7 @@ for_merge <- matched_region_names
 names(for_merge)[1] <- "Region"
 for_map <- left_join(res_clean, for_merge)
 ```
-Now select the bits we want:
+Now select the bits we want to plot on a map:
 
 ```{r}
 for_map <- for_map %>%
@@ -222,7 +222,7 @@ names(for_map)[1] = "id"
 
 This was more complicated than surely it needs to be...
 
-```{r}
+```{r message=FALSE, warning=FALSE}
 library(broom)
 library(gpclib)
 library(maptools)
@@ -243,7 +243,7 @@ ru_df_vals$region <- ru_df_vals$id # to prevent a message later...
 ```
 
 
-### Now really plot the thing
+### Now really (really) plot the data
 
 ```{r warning=FALSE}
 ggplot(ru_df_vals, aes(long, lat)) +
@@ -257,7 +257,6 @@ ggplot(ru_df_vals, aes(long, lat)) +
   labs(fill = "% voting yes") +
   scale_fill_viridis(option = "magma", direction = -1)
 ```
-
 
 The `xlim`, `ylim` and `coord_map` options were helped along by a [stack overflow post](https://stackoverflow.com/a/37567832/416656).
 

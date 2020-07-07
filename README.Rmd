@@ -20,11 +20,15 @@ library(viridis)
 
 ### Read in Wikipedia page
 
+This uses a [particular revision](https://en.wikipedia.org/w/index.php?title=2020_Russian_constitutional_referendum&oldid=966242800), not the [latest page](https://en.wikipedia.org/wiki/2020_Russian_constitutional_referendum), so the table doesn't shift if I rerun the code.
+
 ```{r}
 wp_page <- read_html("https://en.wikipedia.org/w/index.php?title=2020_Russian_constitutional_referendum&oldid=966242800")
 ```
 
 ### Grab the table
+
+I got the xpath using the Chrome inspector (see, e.g., [this page](https://medium.com/@kyleake/wikipedia-data-scraping-with-r-rvest-in-action-3c419db9af2d))
 
 ```{r}
 results <- wp_page %>%
@@ -33,8 +37,10 @@ results <- wp_page %>%
 names(results) <- c("Region", "Votes_Yes", "Perc_Yes", "Votes_No", "Perc_No")
 ```
 
+Have a look:
+
 ```{r eval = F}
-View(results)
+head(results)
 ```
 
 ### Cleaning
@@ -100,6 +106,7 @@ res_clean <- res_clean %>%
   mutate(Perc_Yes = 100*Votes_Yes / (Votes_Yes + Votes_No))
 ```
 
+
 ### Results
 
 ```{r}
@@ -121,6 +128,30 @@ qq_res <- qqPlot(qlogis(res_clean$Perc_Yes / 100), id = list(labels = res_clean$
                  xlab = "Quantiles (normal distribution)",
                  ylab = "Log-odds voting Yes")
 ```
+
+
+```{r eval=FALSE, include=FALSE}
+res_clean <- res_clean %>%
+  mutate(`Valid votes (thousands)` = (Votes_Yes + Votes_No)/1000)
+```
+
+
+```{r eval=FALSE, include=FALSE}
+library(binom)
+res_clean %>%
+  ggplot(aes(x = `Valid votes (thousands)`, y = Perc_Yes)) +
+  geom_point() + 
+  ylab("Percent voting Yes") +
+  stat_function(fun = ~ binom.confint((Perc_Yes/100)*.x*1000,
+                                      .x*1000,
+                                      conf.level = 0.95,
+                                      methods = "agresti-coull")$lower*100) +
+  stat_function(fun = ~ binom.confint((Perc_Yes/100)*.x*1000,
+                                      .x*1000,
+                                      conf.level = 0.95,
+                                      methods = "agresti-coull")$upper*100)
+```
+
 
 
 ## Plot on a map
@@ -212,7 +243,8 @@ for_merge <- matched_region_names
 names(for_merge)[1] <- "Region"
 for_map <- left_join(res_clean, for_merge)
 ```
-Now select the bits we want to plot on a map:
+
+Now select the bits we want to plot on a map - the region name and percentages:
 
 ```{r}
 for_map <- for_map %>%
@@ -233,20 +265,24 @@ library(mapproj)
 gpclibPermit()
 ru_df <- tidy(ru, region = "NAME_1")
 ```
-This doesn't look good: "support for gpclib will be withdrawn from maptools at the next major release"
 
+This doesn’t look good: “support for gpclib will be withdrawn from maptools at the next major release”.
+
+But `tidy` worked:
 
 ```{r}
 head(ru_df)
 ```
 
-```{r}
+Glue the percentages on.
+
+```{r message=FALSE, warning=FALSE}
 ru_df_vals <- left_join(ru_df, for_map)
 ru_df_vals$region <- ru_df_vals$id # to prevent a message later...
 ```
 
 
-Finally...!
+Finally, plot...!
 
 ```{r warning=FALSE}
 ggplot(ru_df_vals, aes(long, lat)) +
@@ -263,6 +299,7 @@ ggplot(ru_df_vals, aes(long, lat)) +
   scale_fill_viridis(option = "magma", direction = -1)
 ```
 
-The `xlim`, `ylim` and `coord_map` options were helped along by a [stack overflow post](https://stackoverflow.com/a/37567832/416656).
+
+The `xlim`, `ylim` and `coord_map` options were helped along by a [stack overflow comment](https://stackoverflow.com/a/37567832/416656).
 
 

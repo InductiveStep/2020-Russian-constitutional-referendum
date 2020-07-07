@@ -2,7 +2,7 @@
 ================
 Andi (<almost@gmail.com>,
 @[inductivestep](https://twitter.com/InductiveStep))
-07 July 2020
+08 July 2020
 
 Using `rvest` to scrape the 2020 Russian constitutional referendum
 results from Wikipedia, do some sums, and plot them on a choropleth
@@ -20,11 +20,20 @@ library(viridis)
 
 ### Read in Wikipedia page
 
+This uses a [particular
+revision](https://en.wikipedia.org/w/index.php?title=2020_Russian_constitutional_referendum&oldid=966242800),
+not the [latest
+page](https://en.wikipedia.org/wiki/2020_Russian_constitutional_referendum),
+so the table doesn’t shift if I rerun the code.
+
 ``` r
 wp_page <- read_html("https://en.wikipedia.org/w/index.php?title=2020_Russian_constitutional_referendum&oldid=966242800")
 ```
 
 ### Grab the table
+
+I got the xpath using the Chrome inspector (see, e.g., [this
+page](https://medium.com/@kyleake/wikipedia-data-scraping-with-r-rvest-in-action-3c419db9af2d))
 
 ``` r
 results <- wp_page %>%
@@ -33,8 +42,10 @@ results <- wp_page %>%
 names(results) <- c("Region", "Votes_Yes", "Perc_Yes", "Votes_No", "Perc_No")
 ```
 
+Have a look:
+
 ``` r
-View(results)
+head(results)
 ```
 
 ### Cleaning
@@ -2713,7 +2724,8 @@ for_map <- left_join(res_clean, for_merge)
 
     ## Joining, by = "Region"
 
-Now select the bits we want to plot on a map:
+Now select the bits we want to plot on a map - the region name and
+percentages:
 
 ``` r
 for_map <- for_map %>%
@@ -2740,7 +2752,9 @@ ru_df <- tidy(ru, region = "NAME_1")
 ```
 
 This doesn’t look good: “support for gpclib will be withdrawn from
-maptools at the next major release”
+maptools at the next major release”.
+
+But `tidy` worked:
 
 ``` r
 head(ru_df)
@@ -2756,17 +2770,14 @@ head(ru_df)
     ## 5  39.7  44.1     5 FALSE 1     Adygey.1 Adygey
     ## 6  39.7  44.1     6 FALSE 1     Adygey.1 Adygey
 
+Glue the percentages on.
+
 ``` r
 ru_df_vals <- left_join(ru_df, for_map)
-```
-
-    ## Joining, by = "id"
-
-``` r
 ru_df_vals$region <- ru_df_vals$id # to prevent a message later...
 ```
 
-Finally…\!
+Finally, plot…\!
 
 ``` r
 ggplot(ru_df_vals, aes(long, lat)) +
@@ -2783,7 +2794,7 @@ ggplot(ru_df_vals, aes(long, lat)) +
   scale_fill_viridis(option = "magma", direction = -1)
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-30-1.png)<!-- -->
+![](README_files/figure-gfm/unnamed-chunk-32-1.png)<!-- -->
 
 The `xlim`, `ylim` and `coord_map` options were helped along by a [stack
-overflow post](https://stackoverflow.com/a/37567832/416656).
+overflow comment](https://stackoverflow.com/a/37567832/416656).

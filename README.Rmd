@@ -113,10 +113,13 @@ res_clean %>%
 hist(res_clean$Perc_Yes, main = "", xlab = "Percentage voting Yes")
 ```
 
+
+Log-odds of voting...
+
 ```{r}
-qq_res <- qqPlot(res_clean$Perc_Yes, id = list(labels = res_clean$Region),
+qq_res <- qqPlot(qlogis(res_clean$Perc_Yes / 100), id = list(labels = res_clean$Region),
                  xlab = "Quantiles (normal distribution)",
-                 ylab = "Percentage voting Yes")
+                 ylab = "Log-odds voting Yes")
 ```
 
 
@@ -199,7 +202,7 @@ Take a look:
 View(matched_region_names)
 ```
 
-No matches for Baikonur (the cosmodrome), Crimea or Sevastopol (which are Ukraine), or "Russians abroad" (that ain't an oblast).
+No matches for Baikonur (the cosmodrome), Crimea or Sevastopol (which are Ukraine), or "Russians abroad" (that ain't no oblast).
 
 
 ### Glue together
@@ -243,14 +246,16 @@ ru_df_vals$region <- ru_df_vals$id # to prevent a message later...
 ```
 
 
-### Now really (really) plot the data
+Finally...!
 
 ```{r warning=FALSE}
 ggplot(ru_df_vals, aes(long, lat)) +
   geom_map(map = ru_df_vals,
            aes(map_id = id, fill = Perc_Yes),
+           color = "gray",
            show.legend = T) +
   theme_void() +
+  theme(legend.position="bottom") +
   coord_map("azequalarea") + 
   xlim(15,190) +
   ylim(40,83) +

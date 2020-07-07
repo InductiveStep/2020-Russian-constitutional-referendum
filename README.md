@@ -2,7 +2,7 @@
 ================
 Andi (<almost@gmail.com>,
 @[inductivestep](https://twitter.com/InductiveStep))
-06 July 2020
+07 July 2020
 
 Using `rvest` to scrape the 2020 Russian constitutional referendum
 results from Wikipedia, do some sums, and plot them on a choropleth
@@ -2592,10 +2592,12 @@ hist(res_clean$Perc_Yes, main = "", xlab = "Percentage voting Yes")
 
 ![](README_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
 
+Log-odds of voting…
+
 ``` r
-qq_res <- qqPlot(res_clean$Perc_Yes, id = list(labels = res_clean$Region),
+qq_res <- qqPlot(qlogis(res_clean$Perc_Yes / 100), id = list(labels = res_clean$Region),
                  xlab = "Quantiles (normal distribution)",
-                 ylab = "Percentage voting Yes")
+                 ylab = "Log-odds voting Yes")
 ```
 
 ![](README_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
@@ -2699,7 +2701,7 @@ View(matched_region_names)
 ```
 
 No matches for Baikonur (the cosmodrome), Crimea or Sevastopol (which
-are Ukraine), or “Russians abroad” (that ain’t an oblast).
+are Ukraine), or “Russians abroad” (that ain’t no oblast).
 
 ### Glue together
 
@@ -2764,14 +2766,16 @@ ru_df_vals <- left_join(ru_df, for_map)
 ru_df_vals$region <- ru_df_vals$id # to prevent a message later...
 ```
 
-### Now really (really) plot the data
+Finally…\!
 
 ``` r
 ggplot(ru_df_vals, aes(long, lat)) +
   geom_map(map = ru_df_vals,
            aes(map_id = id, fill = Perc_Yes),
+           color = "gray",
            show.legend = T) +
   theme_void() +
+  theme(legend.position="bottom") +
   coord_map("azequalarea") + 
   xlim(15,190) +
   ylim(40,83) +

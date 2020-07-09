@@ -2,12 +2,16 @@
 title: "2020 Russian constitutional referendum"
 author: "Andi (almost@gmail.com, @[inductivestep](https://twitter.com/InductiveStep))"
 date: "`r format(Sys.time(), '%d %B %Y')`"
-output: github_document
+output:
+  html_document:
+    self_contained: no
+    toc: yes
+    toc_float: yes
 ---
 
-Using `rvest` to scrape the 2020 Russian constitutional referendum results from Wikipedia, do some sums, and plot them on a choropleth (`raster` and `ggplot`).
+Using `rvest` to scrape the 2020 Russian constitutional referendum results from Wikipedia, do some sums, and plot them on a choropleth (`raster` and `ggplot`). The [source is available here](https://github.com/InductiveStep/2020-Russian-constitutional-referendum).
 
-### Load packages
+## Load packages
 
 ```{r message=FALSE}
 library(rvest)
@@ -18,7 +22,9 @@ library(viridis)
 ```
 
 
-### Read in Wikipedia page
+## Read in the data from a Wikipedia page
+
+### Grab the page
 
 This uses a [particular revision](https://en.wikipedia.org/w/index.php?title=2020_Russian_constitutional_referendum&oldid=966242800), not the [latest page](https://en.wikipedia.org/wiki/2020_Russian_constitutional_referendum), so the table doesn't shift if I rerun the code.
 
@@ -83,7 +89,7 @@ Have a peek:
 View(res_clean)
 ```
 
-### 'rithmetic
+## 'rithmetic
 
 Total sums:
 
@@ -107,7 +113,7 @@ res_clean <- res_clean %>%
 ```
 
 
-### Results
+## Results
 
 ```{r}
 res_clean %>%
